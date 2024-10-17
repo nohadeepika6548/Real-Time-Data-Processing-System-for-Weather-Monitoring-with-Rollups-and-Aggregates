@@ -1,0 +1,119 @@
+Daily Weather Summary
+Data Aggregation Logic
+
+Roll up weather data for each day to calculate:
+Average Temperature: Helps understand the general temperature trend.
+Maximum Temperature: Indicates peak heat levels, critical for health and safety.
+Minimum Temperature: Shows the lowest temperature, important for assessing cold conditions.
+Dominant Weather Condition:
+Reason: The most frequent weather condition provides insight into typical daily weather patterns, influencing activities, planning, and alerts.
+Database Schema for Daily Summaries
+
+CREATE TABLE daily_weather_summary (
+    id SERIAL PRIMARY KEY,
+    date DATE,
+    avg_temp DECIMAL(5, 2),
+    max_temp DECIMAL(5, 2),
+    min_temp DECIMAL(5, 2),
+    dominant_condition VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+Daily Aggregation Implementation
+def aggregate_daily_weather_data(connection):
+    cursor = connection.cursor()
+    query = """
+    INSERT INTO daily_weather_summary (date, avg_temp, max_temp, min_temp, dominant_condition)
+    SELECT 
+        date_trunc('day', dt) AS date,
+        AVG(temp) AS avg_temp,
+        MAX(temp) AS max_temp,
+        MIN(temp) AS min_temp,
+        (SELECT main FROM weather_data 
+         WHERE dt::date = date_trunc('day', dt) 
+         GROUP BY main 
+         ORDER BY COUNT(*) DESC LIMIT 1) AS dominant_condition
+    FROM weather_data
+    WHERE created_at >= NOW() - INTERVAL '1 day'
+    GROUP BY date_trunc('day', dt);
+    """
+    cursor.execute(query)
+    connection.commit()
+    cursor.close()
+
+Alerting Thresholds
+User-Configurable Thresholds
+Allow users to define thresholds for:
+Temperature (e.g., alert if temperature exceeds 35°C).
+Specific weather conditions (e.g., alerts for rain).
+Tracking Logic
+
+thresholds = {
+    'temp_max': 35,
+    'condition': 'Rain'
+}
+
+def check_alerts(current_temp, current_condition, previous_temp, previous_condition):
+    if current_temp > thresholds['temp_max'] and previous_temp > thresholds['temp_max']:
+        return f"Alert! Temperature exceeded {thresholds['temp_max']}°C"
+    if current_condition == thresholds['condition']:
+        return f"Alert! Current condition is {thresholds['condition']}"
+    return None
+
+Alert Triggering
+Implement alert mechanisms to log or send notifications when thresholds are breached.
+Console and Email Alerts: Use libraries like smtplib for email notifications.
+
+
+Implement Visualizations
+Dashboard Setup
+Create visual components to display:
+Daily weather summaries (bar charts for temperature).
+Historical trends (line charts for temperature over time).
+Alerts triggered during observation periods.
+Example Visualization with Matplotlib
+
+import matplotlib.pyplot as plt
+
+def plot_daily_summary(daily_data):
+    dates = [data['date'] for data in daily_data]
+    avg_temps = [data['avg_temp'] for data in daily_data]
+    max_temps = [data['max_temp'] for data in daily_data]
+    min_temps = [data['min_temp'] for data in daily_data]
+
+    plt.plot(dates, avg_temps, label='Average Temperature')
+    plt.plot(dates, max_temps, label='Max Temperature')
+    plt.plot(dates, min_temps, label='Min Temperature')
+    plt.xlabel('Date')
+    plt.ylabel('Temperature (°C)')
+    plt.title('Daily Weather Summary')
+    plt.legend()
+    plt.show()
+
+
+Test Cases
+1. System Setup
+
+Verify system starts successfully and connects to the OpenWeatherMap API using a valid API key.
+2. Data Retrieval
+
+Simulate API calls at configurable intervals.
+Ensure the system retrieves weather data for specified locations and parses the response correctly.
+3. Temperature Conversion
+
+Test conversion of temperature values from Kelvin to Celsius (or Fahrenheit) based on user preference.
+4. Daily Weather Summary
+
+Simulate a sequence of weather updates over several days.
+Verify that daily summaries are calculated correctly (average, maximum, minimum temperatures, and dominant weather condition).
+5. Alerting Thresholds
+
+Define and configure user thresholds for temperature or weather conditions.
+Simulate weather data exceeding or breaching thresholds.
+Verify that alerts are triggered only when thresholds are violated.
+5. Bonus Features
+Support Additional Weather Parameters
+Extend to include humidity, wind speed, etc., in rollups/aggregates.
+Forecast Retrieval and Summaries
+Incorporate weather forecasts from the OpenWeatherMap API and generate summaries based on predicted conditions.
+
