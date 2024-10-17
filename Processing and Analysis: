@@ -1,0 +1,72 @@
+import requests
+from datetime import datetime
+import time
+import json
+
+API_KEY = 'your_api_key'
+CITIES = ['Delhi', 'Mumbai', 'Chennai', 'Bangalore', 'Kolkata', 'Hyderabad']
+BASE_URL = 'http://api.openweathermap.org/data/2.5/weather'
+INTERVAL = 300  # 5 minutes in seconds
+
+def fetch_weather_data(city):
+    params = {
+        'q': city,
+        'appid': API_KEY,
+        'units': 'metric'  # Fetch data in Celsius directly
+    }
+    response = requests.get(BASE_URL, params=params)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        print(f"Error fetching data for {city}: {response.status_code}")
+        return None
+
+def process_weather_data(data):
+    main = data['weather'][0]['main']
+    temp = data['main']['temp']  # Already in Celsius due to 'metric'
+    feels_like = data['main']['feels_like']  # Already in Celsius
+    dt = datetime.utcfromtimestamp(data['dt'])
+    return (main, temp, feels_like, dt)
+
+def main():
+    while True:
+        for city in CITIES:
+            data = fetch_weather_data(city)
+            if data:
+                weather_info = process_weather_data(data)
+                print(f"Weather in {city}: {weather_info}")
+        time.sleep(INTERVAL)
+
+if __name__ == "__main__":
+    main()
+
+User Preferences for Temperature Units
+Preference Handling: Allow users to specify their preferred temperature unit (Celsius or Fahrenheit).
+
+Temperature Conversion Logic: If the user prefers Fahrenheit, convert Celsius to Fahrenheit using the formula:
+
+Fahrenheit = Celsius × 9/5 + 32
+def convert_to_fahrenheit(celsius):
+    return celsius * (9/5) + 32
+
+def process_weather_data(data, prefer_fahrenheit=False):
+    main = data['weather'][0]['main']
+    temp = data['main']['temp']  # Already in Celsius
+    feels_like = data['main']['feels_like']  # Already in Celsius
+    
+    if prefer_fahrenheit:
+        temp = convert_to_fahrenheit(temp)
+        feels_like = convert_to_fahrenheit(feels_like)
+
+    dt = datetime.utcfromtimestamp(data['dt'])
+    return (main, temp, feels_like, dt)
+
+ Data Storage
+Store the processed weather data in the database after conversion, following the schema defined previously.
+
+Monitoring and Error Handling
+Implement logging for API calls and data processing.
+Handle exceptions for network issues or invalid responses gracefully.
+
+Testing
+Create unit tests to validate data fetching and processing functions, including temperature conversions.
