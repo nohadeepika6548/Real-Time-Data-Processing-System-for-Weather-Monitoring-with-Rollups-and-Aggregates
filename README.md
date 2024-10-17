@@ -16,8 +16,3 @@ The Real-Time Data Processing System for Weather Monitoring is designed to conti
 
 #### Testing and Validation:
 The system is rigorously tested to ensure reliability, including checks for successful API connections, accurate data retrieval, temperature conversion, correct calculation of daily summaries, and effective alert triggering. 
-
-#### Bonus Features:
-Future enhancements may include support for additional weather parameters, such as humidity and wind speed, as well as functionalities for retrieving weather forecasts to provide users with predictive insights.
-
-This system not only serves as a robust tool for monitoring real-time weather conditions but also empowers users with actionable insights and alerts to better prepare for varying weather scenarios.
