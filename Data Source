@@ -1,0 +1,103 @@
+OpenWeatherMap API
+Sign up for a free API key.
+Key Parameters:
+main: Main weather condition (e.g., Rain, Snow, Clear)
+temp: Current temperature in Centigrade
+feels_like: Perceived temperature in Centigrade
+dt: Time of the data update (Unix timestamp)
+
+
+ Data Storage
+Database Choice: PostgreSQL (or another suitable RDBMS)
+
+Schema:
+Weather Data Table
+Stores raw weather data.
+CREATE TABLE weather_data (
+    id SERIAL PRIMARY KEY,
+    main VARCHAR(50),
+    temp DECIMAL(5, 2),
+    feels_like DECIMAL(5, 2),
+    dt TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+Aggregated Data Table
+Stores aggregated weather summaries.
+CREATE TABLE weather_aggregates (
+    id SERIAL PRIMARY KEY,
+    main VARCHAR(50),
+    avg_temp DECIMAL(5, 2),
+    avg_feels_like DECIMAL(5, 2),
+    count INT,
+    timestamp TIMESTAMP,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+Data Processing Logic
+Data Ingestion
+
+Use a scheduler (e.g., cron job) to fetch data from the OpenWeatherMap API every specified interval (e.g., every 10 minutes).
+
+import requests
+from datetime import datetime
+
+API_KEY = 'your_api_key'
+CITY = 'your_city'
+URL = f'http://api.openweathermap.org/data/2.5/weather?q={CITY}&appid={API_KEY}&units=metric'
+
+def fetch_weather_data():
+    response = requests.get(URL)
+    if response.status_code == 200:
+        data = response.json()
+        main = data['weather'][0]['main']
+        temp = data['main']['temp']
+        feels_like = data['main']['feels_like']
+        dt = datetime.utcfromtimestamp(data['dt'])
+        return (main, temp, feels_like, dt)
+    else:
+        print(f"Error fetching data: {response.status_code}")
+        return None
+
+Data Storage
+Insert the fetched weather data into the weather_data table.
+import psycopg2
+
+def store_weather_data(connection, main, temp, feels_like, dt):
+    cursor = connection.cursor()
+    cursor.execute("""
+        INSERT INTO weather_data (main, temp, feels_like, dt)
+        VALUES (%s, %s, %s, %s)
+    """, (main, temp, feels_like, dt))
+    connection.commit()
+    cursor.close()
+Data Aggregation
+
+Periodically aggregate data (e.g., every hour) to compute averages.
+def aggregate_weather_data(connection):
+    cursor = connection.cursor()
+    query = """
+    INSERT INTO weather_aggregates (main, avg_temp, avg_feels_like, count, timestamp)
+    SELECT main, AVG(temp), AVG(feels_like), COUNT(*), date_trunc('hour', created_at)
+    FROM weather_data
+    WHERE created_at >= NOW() - INTERVAL '1 hour'
+    GROUP BY main;
+    """
+    cursor.execute(query)
+    connection.commit()
+    cursor.close()
+
+User Interface
+Dashboard: Display current weather conditions and aggregated insights.
+API Endpoints:
+GET /weather/current: Returns the latest weather conditions.
+GET /weather/aggregates: Returns aggregated weather data for a specified time range.
+
+
+Testing and Validation
+Unit Tests: Validate the data fetching and processing functions.
+Integration Tests: Ensure the complete workflow from data fetching to reporting functions correctly.
+Monitoring: Implement logging to track API requests and data processing events.
+
+
+
